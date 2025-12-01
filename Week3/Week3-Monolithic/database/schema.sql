@@ -5,20 +5,20 @@
 -- Drop existing table if exists (for development)
 DROP TABLE IF EXISTS tasks;
 
--- Create tasks table
--- TODO: Review the schema and understand each field
 CREATE TABLE tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
     description TEXT,
     status TEXT NOT NULL DEFAULT 'TODO',
     priority TEXT DEFAULT 'MEDIUM',
+    category TEXT,
+    due_date TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create index for faster queries on status
 CREATE INDEX idx_task_status ON tasks(status);
+
 
 -- Insert sample data for testing
 INSERT INTO tasks (title, description, status, priority) VALUES

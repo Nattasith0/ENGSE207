@@ -1,5 +1,5 @@
 // app.js - Frontend Logic
-// ENGSE207 Software Architecture - Week 3 Lab
+// ENGSE207 Software Architecture - Week 4 Lab (Layered)
 
 // ========================================
 // PART 1: STATE MANAGEMENT
@@ -34,7 +34,7 @@ async function fetchTasks() {
     try {
         const response = await fetch("/api/tasks");
         const data = await response.json();
-        allTasks = data.data;
+        allTasks = data.data || data;
         renderTasks();
     } catch (error) {
         alert("Failed to load tasks.");
@@ -59,11 +59,7 @@ async function createTask(taskData) {
 
         if (!response.ok) throw new Error("Create failed");
 
-        const newTask = await response.json();
-
-        // Backend returns only { id }, now fetch full list again
         await fetchTasks();
-
         addTaskForm.reset();
         alert("Task created successfully!");
     } catch (error) {
@@ -76,15 +72,39 @@ async function createTask(taskData) {
 
 
 // ========================================
-// PART 5: API FUNCTIONS - UPDATE STATUS
+// PART 5: API FUNCTIONS - UPDATE STATUS (NEXT)
+// ใช้ Special Action Route
 // ========================================
-async function updateTaskStatus(taskId, newStatus) {
+async function updateTaskStatus(taskId) {
     showLoading();
     try {
-        const response = await fetch(`/api/tasks/${taskId}/status`, {
-            method: "PATCH",
+        const response = await fetch(`/api/tasks/${taskId}/next-status`, {
+            method: "PATCH"
+        });
+
+        if (!response.ok) throw new Error("Update failed");
+
+        await fetchTasks();
+    } catch (error) {
+        alert("Failed to update status.");
+        console.error(error);
+    } finally {
+        hideLoading();
+    }
+}
+
+
+// ========================================
+// PART 5.1: API FUNCTIONS - UPDATE STATUS (DIRECT / BACK)
+// เพิ่มใหม่ ไม่ลบของเดิม
+// ========================================
+async function updateTaskStatusDirect(taskId, status) {
+    showLoading();
+    try {
+        const response = await fetch(`/api/tasks/${taskId}`, {
+            method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ status: newStatus })
+            body: JSON.stringify({ status })
         });
 
         if (!response.ok) throw new Error("Update failed");
@@ -113,8 +133,7 @@ async function deleteTask(taskId) {
 
         if (!response.ok) throw new Error("Delete failed");
 
-        allTasks = allTasks.filter(t => t.id !== taskId);
-        renderTasks();
+        await fetchTasks();
         alert("Task deleted.");
     } catch (error) {
         alert("Failed to delete task.");
@@ -161,12 +180,14 @@ function renderTaskList(tasks, container, currentStatus) {
         return;
     }
 
-    tasks.forEach(task => container.appendChild(createTaskCard(task, currentStatus)));
+    tasks.forEach(task =>
+        container.appendChild(createTaskCard(task, currentStatus))
+    );
 }
 
 
 // ========================================
-// PART 9: TASK CARD COMPONENT
+// PART 9: TASK CARD COMPONENT (FIXED)
 // ========================================
 function createTaskCard(task, currentStatus) {
     const card = document.createElement("div");
@@ -177,14 +198,48 @@ function createTaskCard(task, currentStatus) {
     card.innerHTML = `
         <div class="task-header">
             <h4>${escapeHtml(task.title)}</h4>
-            <span class="priority-badge ${priorityClass}">${task.priority}</span>
+            <span class="priority-badge ${priorityClass}">
+                ${task.priority || "LOW"}
+            </span>
         </div>
+
         ${task.description ? `<p>${escapeHtml(task.description)}</p>` : ""}
         <small>Created: ${formatDate(task.created_at)}</small>
 
         <div class="task-actions">
-            ${createStatusButtons(task.id, currentStatus)}
-            <button class="btn btn-danger btn-sm" onclick="deleteTask(${task.id})">🗑 Delete</button>
+            ${
+                // ✅ อนุญาตให้ย้อนเฉพาะตอนยังไม่ DONE
+                currentStatus !== "DONE"
+                ? `
+                    <button class="btn btn-warning btn-sm"
+                        onclick="updateTaskStatusDirect(${task.id}, 'TODO')">
+                        ← To Do
+                    </button>
+
+                    <button class="btn btn-info btn-sm"
+                        onclick="updateTaskStatusDirect(${task.id}, 'IN_PROGRESS')">
+                        → In Progress
+                    </button>
+                `
+                : ""
+            }
+
+            ${
+                // ✅ DONE เป็น terminal state
+                currentStatus !== "DONE"
+                ? `
+                    <button class="btn btn-primary btn-sm"
+                        onclick="updateTaskStatus(${task.id})">
+                        Next Status →
+                    </button>
+                `
+                : ""
+            }
+
+            <button class="btn btn-danger btn-sm"
+                onclick="deleteTask(${task.id})">
+                🗑 Delete
+            </button>
         </div>
     `;
 
@@ -193,27 +248,7 @@ function createTaskCard(task, currentStatus) {
 
 
 // ========================================
-// PART 10: STATUS BUTTONS GENERATOR
-// ========================================
-function createStatusButtons(taskId, currentStatus) {
-    const btn = [];
-
-    if (currentStatus !== "TODO") {
-        btn.push(`<button class="btn btn-warning btn-sm" onclick="updateTaskStatus(${taskId}, 'TODO')">← To Do</button>`);
-    }
-    if (currentStatus !== "IN_PROGRESS") {
-        btn.push(`<button class="btn btn-info btn-sm" onclick="updateTaskStatus(${taskId}, 'IN_PROGRESS')">→ In Progress</button>`);
-    }
-    if (currentStatus !== "DONE") {
-        btn.push(`<button class="btn btn-success btn-sm" onclick="updateTaskStatus(${taskId}, 'DONE')">✔ Done</button>`);
-    }
-
-    return btn.join("");
-}
-
-
-// ========================================
-// PART 11: UTILITIES
+// PART 10: UTILITIES
 // ========================================
 function escapeHtml(text) {
     const div = document.createElement("div");
@@ -230,7 +265,7 @@ function hideLoading() { loadingOverlay.style.display = "none"; }
 
 
 // ========================================
-// PART 12: EVENT LISTENERS
+// PART 11: EVENT LISTENERS
 // ========================================
 addTaskForm.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -251,7 +286,7 @@ statusFilter.addEventListener("change", (e) => {
 
 
 // ========================================
-// PART 13: INITIALIZATION
+// PART 12: INITIALIZATION
 // ========================================
 document.addEventListener("DOMContentLoaded", () => {
     console.log("Task board initialized.");
@@ -260,7 +295,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 // ========================================
-// PART 14: GLOBAL
+// PART 13: GLOBAL
 // ========================================
 window.updateTaskStatus = updateTaskStatus;
+window.updateTaskStatusDirect = updateTaskStatusDirect;
 window.deleteTask = deleteTask;

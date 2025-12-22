@@ -2,7 +2,7 @@
 
 ## High-Level Architecture
 
-
+'''
 ┌─────────────────────────────────────────────────────────┐
 │                     CLIENT (Browser)                    │
 │                    (HTML/CSS/JavaScript)                │
@@ -47,7 +47,7 @@
                    │   DATABASE   │
                    │   (SQLite)   │
                    └──────────────┘
-
+'''
 ## Data Flow Example: Create Task
 
 1. Client sends POST /api/tasks
